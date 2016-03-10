@@ -2,7 +2,7 @@ use errors::NotifyHandler;
 
 use std::error;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::io;
 use std::char::from_u32;
 use std::io::Write;
@@ -458,18 +458,6 @@ pub fn open_browser(path: &Path) -> io::Result<bool> {
             .map(|_| true)
     }
     inner(path)
-}
-pub fn home_dir() -> Option<PathBuf> {
-    #[cfg(not(windows))]
-    fn inner() -> Option<PathBuf> {
-        ::std::env::home_dir()
-    }
-    #[cfg(windows)]
-    fn inner() -> Option<PathBuf> {
-        windows::get_special_folder(&windows::FOLDERID_Profile).ok()
-    }
-
-    inner()
 }
 
 #[cfg(windows)]

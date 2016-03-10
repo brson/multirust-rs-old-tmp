@@ -25,7 +25,7 @@ nightly revision:
 
 ",
 r"info: installing toolchain 'nightly'
-info: downloading manifest
+info: downloading toolchain manifest
 info: downloading component 'rust-std'
 info: downloading component 'rustc'
 info: downloading component 'cargo'
@@ -52,7 +52,7 @@ nightly revision:
 
 ",
 r"info: updating existing install for 'nightly'
-info: downloading manifest
+info: downloading toolchain manifest
 info: toolchain is already up to date
 ");
     });
@@ -70,7 +70,7 @@ nightly revision:
 
 ",
 r"info: installing toolchain 'nightly'
-info: downloading manifest
+info: downloading toolchain manifest
 info: downloading component 'rust-std'
 info: downloading component 'rustc'
 info: downloading component 'cargo'
@@ -110,7 +110,7 @@ pub fn update_no_manifest() {
         expect_err_ex(config, &["multirust", "update", "nightly-2016-01-01"],
 r"",
 r"info: installing toolchain 'nightly-2016-01-01'
-info: downloading manifest
+info: downloading toolchain manifest
 error: no release found for 'nightly-2016-01-01'
 ");
     });

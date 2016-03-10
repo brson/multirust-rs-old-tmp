@@ -5,6 +5,8 @@ use std::env;
 use std::path::PathBuf;
 
 pub fn main() -> Result<()> {
+    try!(::self_update::cleanup_self_updater());
+
     let arg0 = env::args().next().map(|a| PathBuf::from(a));
     let arg0 = arg0.as_ref()
         .and_then(|a| a.file_name())
