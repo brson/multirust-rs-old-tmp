@@ -61,39 +61,20 @@ pub fn set_globals(verbose: bool) -> Result<Cfg> {
 
 }
 
-pub fn run_inner<S: AsRef<OsStr>>(_: &Cfg, command: Result<Command>,
+pub fn run_inner<S: AsRef<OsStr>>(mut command: Command,
                                   args: &[S]) -> Result<()> {
-    if let Ok(mut command) = command {
-        for arg in &args[1..] {
-            if arg.as_ref() == OsStr::new("--multirust") {
-                println!("Proxied via multirust");
-                std::process::exit(0);
-            } else {
-                command.arg(arg);
-            }
+    command.args(&args[1..]);
+    match command.status() {
+        Ok(result) => {
+            // Ensure correct exit code is returned
+            std::process::exit(result.code().unwrap_or(1));
         }
-        match command.status() {
-            Ok(result) => {
-                // Ensure correct exit code is returned
-                std::process::exit(result.code().unwrap_or(1));
-            }
-            Err(e) => {
-                Err(multirust_utils::Error::RunningCommand {
-                        name: args[0].as_ref().to_owned(),
-                        error: multirust_utils::raw::CommandError::Io(e),
-                    }
-                    .into())
-            }
+        Err(e) => {
+            Err(multirust_utils::Error::RunningCommand {
+                name: args[0].as_ref().to_owned(),
+                error: multirust_utils::raw::CommandError::Io(e),
+            }.into())
         }
-
-    } else {
-        for arg in &args[1..] {
-            if arg.as_ref() == OsStr::new("--multirust") {
-                println!("Proxied via multirust");
-                std::process::exit(0);
-            }
-        }
-        command.map(|_| ())
     }
 }
 

@@ -604,48 +604,6 @@ fn get_add_path_methods() -> Vec<PathUpdateMethod> {
     existing_rcfiles.map(|f| PathUpdateMethod::RcFile(f)).collect()
 }
 
-#[cfg(windows)]
-fn do_add_to_path(path: &Path, methods: &[PathUpdateMethod]) -> Result<()> {
-    assert!(methods.len() == 1 && methods[0] == PathUpdateMethod::Windows);
-
-    use winreg::RegKey;
-    use winapi::*;
-    use user32::*;
-    use std::ptr;
-
-    let root = RegKey::predef(HKEY_CURRENT_USER);
-    let environment = try!(root.open_subkey_with_flags("Environment", KEY_READ | KEY_WRITE)
-                           .map_err(|_| Error::PermissionDenied));
-
-    let mut new_path = path.to_str().expect("non-unicode installation path").to_string();
-    let old_path: String = environment.get_value("PATH").expect("non-unicode PATH");
-
-    if old_path.contains(&new_path) {
-        return Ok(());
-    }
-
-    new_path.push_str(";");
-    new_path.push_str(&old_path);
-    try!(environment.set_value("PATH", &new_path)
-         .map_err(|_| Error::PermissionDenied));
-
-    // Tell other processes to update their environment
-    unsafe {
-        SendMessageTimeoutA(HWND_BROADCAST,
-                            WM_SETTINGCHANGE,
-                            0 as WPARAM,
-                            "Environment\0".as_ptr() as LPARAM,
-                            SMTO_ABORTIFHUNG,
-                            5000,
-                            ptr::null_mut());
-    }
-
-    println!("PATH has been updated. You may need to restart your shell for changes to take \
-              effect.");
-
-    Ok(())
-}
-
 fn shell_export_string() -> Result<String> {
     let path = format!("{}/bin", try!(canonical_cargo_home()));
     Ok(format!(r#"export PATH="{}:$PATH""#, path))
@@ -664,6 +622,45 @@ fn do_add_to_path(methods: &[PathUpdateMethod]) -> Result<()> {
         } else {
             unreachable!()
         }
+    }
+
+    Ok(())
+}
+
+#[cfg(windows)]
+fn do_add_to_path(methods: &[PathUpdateMethod]) -> Result<()> {
+    assert!(methods.len() == 1 && methods[0] == PathUpdateMethod::Windows);
+
+    use winreg::RegKey;
+    use winapi::*;
+    use user32::*;
+    use std::ptr;
+
+    let root = RegKey::predef(HKEY_CURRENT_USER);
+    let environment = try!(root.open_subkey_with_flags("Environment", KEY_READ | KEY_WRITE)
+                           .map_err(|_| Error::PermissionDenied));
+
+    let old_path: String = environment.get_value("PATH").expect("non-unicode PATH");
+
+    let mut new_path = try!(get_cargo_home()).join("bin").to_string_lossy().to_string();
+    if old_path.contains(&new_path) {
+        return Ok(());
+    }
+
+    new_path.push_str(";");
+    new_path.push_str(&old_path);
+    try!(environment.set_value("PATH", &new_path)
+         .map_err(|_| Error::PermissionDenied));
+
+    // Tell other processes to update their environment
+    unsafe {
+        SendMessageTimeoutA(HWND_BROADCAST,
+                            WM_SETTINGCHANGE,
+                            0 as WPARAM,
+                            "Environment\0".as_ptr() as LPARAM,
+                            SMTO_ABORTIFHUNG,
+                            5000,
+                            ptr::null_mut());
     }
 
     Ok(())
@@ -697,7 +694,7 @@ fn get_remove_path_methods() -> Result<Vec<PathUpdateMethod>> {
 }
 
 #[cfg(windows)]
-fn do_remove_from_path(path: &Path, methods: &[PathUpdateMethod]) -> Result<()> {
+fn do_remove_from_path(methods: &[PathUpdateMethod]) -> Result<()> {
     assert!(methods.len() == 1 && methods[0] == PathUpdateMethod::Windows);
 
     use winreg::RegKey;
@@ -709,9 +706,8 @@ fn do_remove_from_path(path: &Path, methods: &[PathUpdateMethod]) -> Result<()> 
     let environment = try!(root.open_subkey_with_flags("Environment", KEY_READ | KEY_WRITE)
                            .map_err(|_| Error::PermissionDenied));
 
-    let ref path_str = path.to_str().expect("non-unicode installation path").to_string();
     let old_path: String = environment.get_value("PATH").expect("non-unicode PATH");
-
+    let ref path_str = try!(get_cargo_home()).join("bin").to_string_lossy().to_string();
     let idx = if let Some(i) = old_path.find(path_str) {
         i
     } else {
